@@ -8,9 +8,10 @@ fotos, jobs e vídeos ficam no repositório privado.
 
 ## Telas
 
-- **Looks**: sobe fotos do rolo da câmera para `assets/fashion/<look>/` e recorta detalhes em 9:16.
+- **Fotos**: sobe fotos do rolo da câmera para `assets/fashion/<look>/` (moda) ou `assets/story/<projeto>/` (histórias) e recorta detalhes em 9:16.
 - **Criar**: escolhe qualidade, textura, upscale, interpolação, referências de detalhe e monta os takes (foto inicial, final opcional, duração, movimento). Avisa os erros conhecidos (foto final que congela, distância longa entre fotos, giros que inventam costas).
-- **Execuções**: acompanha a fila, assiste e baixa cada take, manda takes para a edição e refaz um take em qualidade máxima.
+- **Criar → História**: uma cena por vez. Personagens e cenários como referência (`<Subject 1>`, `<Subject 2>`...), primeiro e último quadro por foto ou por texto, etapa (animar, gerar quadros ou tudo de uma vez), formato, estilo, textura e áudio.
+- **Execuções**: acompanha a fila, assiste e baixa cada take, manda takes para a edição e refaz um take em qualidade máxima. Nas histórias, salva o quadro aprovado no projeto ou já abre a cena para animar.
 - **Edição**: marca início e fim de cada trecho, faz a prévia e monta o filme final (workflow `Moda - montar edicao`, sem GPU).
 
 ## Chave de acesso

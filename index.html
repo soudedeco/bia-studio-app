@@ -119,7 +119,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
 </header>
 <main id="view"></main>
 <nav class="tabs">
-  <button data-tab="looks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="9" rx="1.5"/><rect x="3" y="15" width="7" height="6" rx="1.5"/><rect x="14" y="15" width="7" height="6" rx="1.5"/></svg>Looks</button>
+  <button data-tab="looks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="9" rx="1.5"/><rect x="3" y="15" width="7" height="6" rx="1.5"/><rect x="14" y="15" width="7" height="6" rx="1.5"/></svg>Fotos</button>
   <button data-tab="criar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="14" height="14" rx="2"/><path d="M17 10l4-2.5v9L17 14"/></svg>Criar</button>
   <button data-tab="execucoes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Execuções</button>
   <button data-tab="edicao"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"/></svg>Edição</button>
@@ -138,16 +138,18 @@ const LS = {
   set(k, v){ try{ localStorage.setItem("bia." + k, JSON.stringify(v)); }catch(e){} }
 };
 const cfg = Object.assign({ token:"", repo:"soudedeco/bia-ai-studio", branch:"main" }, LS.get("cfg", {}));
-const ASSETS = "assets/fashion";
-const WF_FASHION = "fashion-job.yml", WF_EDIT = "montar-edicao.yml";
+const ROOTS = { moda: "assets/fashion", historia: "assets/story" };
+const WF_FASHION = "fashion-job.yml", WF_EDIT = "montar-edicao.yml", WF_STORY = "story-shot.yml";
+const KIND_LABEL = { moda: "Moda", historia: "Histórias" };
 const state = {
   tab: LS.get("tab", "looks"),
-  look: LS.get("look", ""),
+  look: LS.get("folder", ""), kind: LS.get("kind", "moda"), mode: LS.get("mode", "moda"), sdraft: LS.get("sdraft", null), looksBy: {},
   draft: LS.get("draft", null),
   edit: LS.get("edit", { name:"", texture:"extrema", clips:[] }),
   looks: null, photos: {}, blobs: new Map(), runsTimer: null
 };
 const saveDraft = () => LS.set("draft", state.draft);
+const saveSDraft = () => LS.set("sdraft", state.sdraft);
 const saveEdit = () => LS.set("edit", state.edit);
 
 /* ============ utilitários ============ */
@@ -215,7 +217,7 @@ async function commitFiles(files, message, branch = cfg.branch, onProgress){
     const tree = [];
     let i = 0;
     for (const f of files){
-      const blob = f.text != null ? await ghJSON("git/blobs", { content: f.text, encoding: "utf-8" })
+      const blob = f.sha ? { sha: f.sha } : f.text != null ? await ghJSON("git/blobs", { content: f.text, encoding: "utf-8" })
                                   : await ghJSON("git/blobs", { content: f.b64, encoding: "base64" });
       tree.push({ path: f.path, mode: "100644", type: "blob", sha: blob.sha });
       onProgress && onProgress(++i / files.length);
@@ -247,7 +249,7 @@ async function resizeImageInner(file, maxSide){
 }
 async function loadPhotos(look, force){
   if (!force && state.photos[look]) return state.photos[look];
-  const items = (await listDir(`${ASSETS}/${look}`)).filter(f => f.type === "file" && /\.(jpe?g|png|webp)$/i.test(f.name))
+  const items = (await listDir(look)).filter(f => f.type === "file" && /\.(jpe?g|png|webp)$/i.test(f.name))
     .sort((a, b) => a.name.localeCompare(b.name));
   state.photos[look] = items; return items;
 }
@@ -301,7 +303,7 @@ function openSettings(){
     LS.set("cfg", cfg); out.textContent = "Testando...";
     try {
       const r = await gh(""); await gh(`branches/${encodeURIComponent(cfg.branch)}`);
-      out.textContent = `Conectado a ${r.full_name} (branch ${cfg.branch}).`; state.looks = null; state.photos = {};
+      out.textContent = `Conectado a ${r.full_name} (branch ${cfg.branch}).`; state.looksBy = {}; state.photos = {};
       setTimeout(() => { closeSheet(); go(state.tab); }, 700);
     } catch(e){ out.textContent = "Falhou: " + e.message; }
   };
@@ -314,45 +316,50 @@ function openSettings(){
 }
 
 /* ============ LOOKS ============ */
-async function loadLooks(force){
-  if (state.looks && !force) return state.looks;
-  state.looks = (await listDir(ASSETS)).filter(d => d.type === "dir").map(d => d.name).sort();
-  return state.looks;
+async function loadLooks(kind = state.kind, force){
+  if (state.looksBy[kind] && !force) return state.looksBy[kind];
+  state.looksBy[kind] = (await listDir(ROOTS[kind])).filter(d => d.type === "dir").map(d => d.path).sort();
+  return state.looksBy[kind];
 }
+const pretty = folder => baseName(folder || "").replace(/-/g, " ");
 async function viewLooks(v){
   if (state.look) return viewLook(v, state.look);
-  v.append(h("div", { class: "row between", style: "margin-bottom:12px" }, h("h2", {}, "Looks"),
-    h("button", { class: "btn primary small", onclick: newLook }, "+ Novo look")));
+  v.append(h("div", { class: "row between", style: "margin-bottom:12px" }, h("h2", {}, "Fotos"),
+    h("button", { class: "btn primary small", onclick: newLook }, state.kind === "moda" ? "+ Novo look" : "+ Novo projeto")));
+  v.append(h("div", { style: "margin-bottom:12px" }, seg([["moda", "Moda"], ["historia", "Histórias"]], state.kind, k => { state.kind = k; LS.set("kind", k); go("looks"); })));
   const box = h("div", {}, h("div", { class: "empty" }, "Carregando..."));
   v.append(box);
-  const looks = await loadLooks(true);
+  const looks = await loadLooks(state.kind, true);
   box.replaceChildren();
-  if (!looks.length) { box.append(h("div", { class: "empty" }, "Nenhum look ainda. Crie o primeiro.")); return; }
+  if (!looks.length) { box.append(h("div", { class: "empty" }, state.kind === "moda" ? "Nenhum look ainda. Crie o primeiro." : "Nenhum projeto de história ainda. Crie um para guardar personagens, cenários e quadros.")); return; }
   const card = h("div", { class: "card" });
   for (const l of looks){
     const cover = h("div", { class: "slot", style: "width:54px" });
-    card.append(h("div", { class: "list-item", style: "cursor:pointer", onclick: () => { state.look = l; LS.set("look", l); go("looks"); } },
-      cover, h("div", { class: "grow" }, h("div", { class: "ellipsis", style: "font-weight:600" }, l.replace(/-/g, " ")), h("div", { class: "small muted" }, l)),
+    card.append(h("div", { class: "list-item", style: "cursor:pointer", onclick: () => { state.look = l; LS.set("folder", l); go("looks"); } },
+      cover, h("div", { class: "grow" }, h("div", { class: "ellipsis", style: "font-weight:600" }, pretty(l)), h("div", { class: "small muted" }, baseName(l))),
       h("span", { class: "muted" }, "›")));
     loadPhotos(l).then(ps => { if (ps[0]) cover.replaceChildren(thumbImg(ps[0])); }).catch(() => {});
   }
   box.append(card);
 }
 function newLook(){
-  const name = h("input", { type: "text", placeholder: "ex.: vestido verde babados" });
-  openSheet("Novo look", h("div", { class: "stack" },
-    h("label", { class: "field" }, "Nome do look (vira a pasta das fotos)"), name,
+  const moda = state.kind === "moda";
+  const name = h("input", { type: "text", placeholder: moda ? "ex.: vestido verde babados" : "ex.: novela praia" });
+  openSheet(moda ? "Novo look" : "Novo projeto de história", h("div", { class: "stack" },
+    h("label", { class: "field" }, moda ? "Nome do look (vira a pasta das fotos)" : "Nome do projeto (personagens, cenários e quadros ficam juntos)"), name,
     h("button", { class: "btn primary block", onclick: () => {
-      const s = slug(name.value); if (!s) return toast("Dê um nome ao look");
-      state.look = s; LS.set("look", s); state.photos[s] = []; closeSheet(); go("looks"); pickPhotos(s);
+      const s0 = slug(name.value); if (!s0) return toast("Dê um nome");
+      const s = `${ROOTS[state.kind]}/${s0}`;
+      state.look = s; LS.set("folder", s); state.photos[s] = []; closeSheet(); go("looks"); pickPhotos(s);
     } }, "Criar e escolher fotos")));
 }
 async function viewLook(v, look){
   v.append(h("div", { class: "row between", style: "margin-bottom:12px" },
-    h("button", { class: "btn ghost small", onclick: () => { state.look = ""; LS.set("look", ""); go("looks"); } }, "‹ Looks"),
+    h("button", { class: "btn ghost small", onclick: () => { state.look = ""; LS.set("folder", ""); go("looks"); } }, "‹ Voltar"),
     h("button", { class: "btn primary small", onclick: () => pickPhotos(look) }, "+ Fotos")));
-  v.append(h("h2", {}, look.replace(/-/g, " ")));
-  v.append(h("p", { class: "small muted" }, "Toque numa foto para recortar um detalhe em 9:16 (ex.: barra, babado, bolso). O recorte vira uma foto nova do look."));
+  const isStory = look.startsWith(ROOTS.historia);
+  v.append(h("h2", {}, pretty(look)));
+  v.append(h("p", { class: "small muted" }, isStory ? "Personagens, cenários e quadros prontos deste projeto. Toque numa foto para recortar." : "Toque numa foto para recortar um detalhe em 9:16 (ex.: barra, babado, bolso). O recorte vira uma foto nova do look."));
   const grid = h("div", { class: "grid" });
   v.append(grid);
   const ps = await loadPhotos(look, true);
@@ -360,7 +367,7 @@ async function viewLook(v, look){
   for (const p of ps){
     grid.append(h("button", { class: "thumb", onclick: () => cropEditor(look, p) }, thumbImg(p), h("span", { class: "cap" }, p.name)));
   }
-  v.append(h("button", { class: "btn block", style: "margin-top:16px", onclick: () => { startDraft(look); go("criar"); } }, "Criar vídeo com este look →"));
+  v.append(h("button", { class: "btn block", style: "margin-top:16px", onclick: () => { if (isStory){ startStory(look); setMode("historia"); } else { startDraft(look); setMode("moda"); } go("criar"); } }, isStory ? "Criar cena com este projeto →" : "Criar vídeo com este look →"));
 }
 function pickPhotos(look){
   const inp = $("#file-input"); inp.value = "";
@@ -386,12 +393,12 @@ function uploadForm(look, files){
         const blob = await resizeImage(rows[i].f);
         const ext = blob.type === "image/png" ? "png" : "jpg";
         const n = String(existing + i + 1).padStart(2, "0");
-        out.push({ path: `${ASSETS}/${look}/${n}-${slug(rows[i].desc.value) || "foto"}.${ext}`, b64: await blobToB64(blob) });
+        out.push({ path: `${look}/${n}-${slug(rows[i].desc.value) || "foto"}.${ext}`, b64: await blobToB64(blob) });
         bar.firstChild.style.width = `${(i + 1) / rows.length * 40}%`;
       }
       status.textContent = "Enviando para o GitHub...";
       await commitFiles(out, `App: fotos do look ${look}`, cfg.branch, p => { bar.firstChild.style.width = `${40 + p * 60}%`; status.textContent = `Enviando para o GitHub... ${Math.round(p * 100)}%`; });
-      toast("Fotos enviadas"); closeSheet(); state.looks = null; go("looks");
+      toast("Fotos enviadas"); closeSheet(); state.looksBy = {}; go("looks");
     } catch(e){ btn.disabled = false; status.className = "note err"; status.textContent = "Não foi: " + (e.message || e); }
   };
   openSheet("Enviar fotos", h("div", { class: "stack" }, h("div", {}, rows.map(r => r.el)), bar, status, btn,
@@ -433,7 +440,7 @@ function cropEditor(look, file){
       c.getContext("2d").drawImage(img, bx * k, by * k, sw, sh, 0, 0, outW, outH);
       const blob = await new Promise(r => c.toBlob(r, "image/jpeg", 0.92));
       const n = String((state.photos[look] || []).length + 1).padStart(2, "0");
-      await commitFiles([{ path: `${ASSETS}/${look}/${n}-${slug(name.value) || "detalhe"}.jpg`, b64: await blobToB64(blob) }], `App: recorte ${look}`);
+      await commitFiles([{ path: `${look}/${n}-${slug(name.value) || "detalhe"}.jpg`, b64: await blobToB64(blob) }], `App: recorte ${look}`);
       toast("Recorte salvo"); closeSheet(); go("looks");
     } catch(e){ btn.disabled = false; toast("Erro: " + e.message, 5000); }
   };
@@ -487,7 +494,7 @@ function takeWarnings(t, i, n){
   return w;
 }
 function buildJob(d){
-  const id = `${d.look}-${slug(d.name) || "filme"}-${stamp()}`;
+  const id = `${baseName(d.look)}-${slug(d.name) || "filme"}-${stamp()}`;
   const job = { id, pipeline: "fashion_video", preset: "fashion-film", quality: d.quality, aspect_ratio: "9:16",
     film_texture: d.texture, video_upscale: d.upscale, prompt: "Cinematic fashion take." };
   if (+d.grain) job.film_grain = +d.grain;
@@ -502,12 +509,16 @@ function buildJob(d){
   });
   return job;
 }
+function setMode(m){ state.mode = m; LS.set("mode", m); }
 async function viewCriar(v){
-  const looks = await loadLooks();
+  v.append(h("div", { style: "margin-bottom:14px" }, seg([["moda", "Moda"], ["historia", "História"]], state.mode, m => { setMode(m); go("criar"); })));
+  if (state.mode === "historia") return viewStory(v);
+  if (state.draft && !String(state.draft.look).includes("/")) { state.draft.look = `${ROOTS.moda}/${state.draft.look}`; saveDraft(); }
+  const looks = await loadLooks("moda");
   if (!state.draft){
     v.append(h("h2", { style: "margin-bottom:12px" }, "Novo vídeo"));
     if (!looks.length) return v.append(h("div", { class: "empty" }, "Crie um look com fotos primeiro, na aba Looks."));
-    const sel = h("select", {}, looks.map(l => h("option", { value: l, selected: l === state.look }, l)));
+    const sel = h("select", {}, looks.map(l => h("option", { value: l, selected: l === state.look }, pretty(l))));
     v.append(h("div", { class: "card stack" }, h("label", { class: "field" }, "Look"), sel,
       h("button", { class: "btn primary block", onclick: () => { startDraft(sel.value); go("criar"); } }, "Começar")));
     return;
@@ -518,7 +529,7 @@ async function viewCriar(v){
 
   const name = h("input", { type: "text", value: d.name, placeholder: "ex. stories v1" }); name.oninput = () => { d.name = name.value; saveDraft(); };
   v.append(h("div", { class: "card stack" },
-    h("div", { class: "row between" }, h("div", {}, h("div", { class: "small muted" }, "Look"), h("div", { style: "font-weight:600" }, d.look)),
+    h("div", { class: "row between" }, h("div", {}, h("div", { class: "small muted" }, "Look"), h("div", { style: "font-weight:600" }, pretty(d.look))),
       h("button", { class: "btn small", onclick: () => { state.draft = null; saveDraft(); go("criar"); } }, "Trocar")),
     h("div", {}, h("label", { class: "field" }, "Nome deste vídeo"), name)));
 
@@ -596,6 +607,145 @@ async function viewCriar(v){
 }
 function confirmLite(msg){ return window.confirm(msg); }
 
+/* ============ CRIAR: HISTÓRIA ============ */
+function startStory(folder, first){
+  state.sdraft = { folder, shot: "", stage: first ? "video" : "video", quality: "final_rapido", aspect: "9:16", refs: [],
+    first: first ? { type: "image", image: first, prompt: "" } : { type: "image", image: "", prompt: "" },
+    last: { type: "none", image: "", prompt: "" }, motion: "", duration: 5, style: "", texture: "nenhuma", audio: true, upscale: "ffmpeg" };
+  saveSDraft();
+}
+function storyChecks(d){
+  const w = [];
+  const usesPrompt = d.first.type === "prompt" || d.last.type === "prompt";
+  const hasFirst = d.first.type === "image" ? !!d.first.image : !!d.first.prompt.trim();
+  if (!hasFirst && !d.refs.some(r => r.image)) w.push(["err", "Escolha o primeiro quadro (foto pronta ou texto) ou pelo menos um personagem."]);
+  if (d.first.type === "image" && !d.first.image && d.refs.length) w.push(["info", "Sem primeiro quadro: o vídeo nasce só das referências dos personagens."]);
+  if (d.stage === "video" && usesPrompt) w.push(["err", "Na etapa \"Animar\" os quadros precisam ser fotos prontas. Para gerar quadros por texto, use \"Gerar quadros\" ou \"Tudo de uma vez\"."]);
+  if (d.stage === "keyframes" && !usesPrompt) w.push(["err", "\"Gerar quadros\" precisa de pelo menos um quadro descrito por texto."]);
+  if (d.last.type === "image" && !d.last.image) w.push(["err", "Escolha a foto do último quadro ou marque \"Sem último quadro\"."]);
+  if (d.stage !== "keyframes" && !d.motion.trim()) w.push(["err", "Descreva a ação e a câmera (de preferência em inglês)."]);
+  if (d.refs.length && d.stage !== "keyframes" && d.motion && !/<Subject \d>/.test(d.motion)) w.push(["info", "Cite os personagens no movimento como <Subject 1>, <Subject 2>... na ordem da lista. Toque nos nomes acima do texto para inserir."]);
+  if (d.last.type !== "none" && d.duration > 6) w.push(["warn", "Muito tempo até um último quadro fixo costuma gerar alucinação ou congelar no fim. 5 a 6 s é o mais seguro."]);
+  if (d.refs.some(r => r.image && !r.label.trim())) w.push(["warn", "Dê um nome a cada personagem/cenário (ex.: Lucas, Rafa, a praia)."]);
+  return w;
+}
+function buildStoryJob(d){
+  const project = baseName(d.folder);
+  const shot = slug(d.shot) || "take";
+  const job = { id: `${project}-${shot}-${stamp()}`, pipeline: "story_scene", project, shot, stage: d.stage, quality: d.quality,
+    aspect_ratio: d.aspect, duration_seconds: +d.duration, keep_audio: !!d.audio, video_upscale: d.upscale };
+  if (d.texture && d.texture !== "nenhuma") job.film_texture = d.texture;
+  if (d.style) job.style_preset = d.style;
+  const refs = d.refs.filter(r => r.image).map(r => ({ image: r.image, label: r.label.trim() || "character" }));
+  if (refs.length) job.references = refs;
+  const frame = f => f.type === "image" ? (f.image ? { image: f.image } : null) : f.type === "prompt" ? (f.prompt.trim() ? { prompt: f.prompt.trim() } : null) : null;
+  const ff = frame(d.first), lf = frame(d.last);
+  if (ff) job.first_frame = ff;
+  if (lf) job.last_frame = lf;
+  if (d.motion.trim()) job.motion_prompt = d.motion.trim();
+  return job;
+}
+function frameEditor(d, key, title, allowNone, rerender){
+  const f = d[key];
+  const opts = [["image", "Foto pronta"], ["prompt", "Gerar por texto"]];
+  if (allowNone) opts.unshift(["none", "Sem"]);
+  const box = h("div", { class: "stack" }, h("label", { class: "field" }, title), seg(opts, f.type, t => { f.type = t; rerender(); }));
+  if (f.type === "image"){
+    const s = slotEl(d.folder, f.image, "Escolher foto"); s.onclick = () => photoPicker(d.folder, title, p => { f.image = p; rerender(); });
+    box.append(h("div", { class: "row", style: "flex-wrap:nowrap" }, s, h("div", { class: "small muted grow" }, "Uma foto do projeto: um quadro que você já aprovou, uma imagem feita no ChatGPT, etc.")));
+  } else if (f.type === "prompt"){
+    const ta = h("textarea", { placeholder: "Descreva a imagem em inglês: quem está na cena, onde, enquadramento, luz. Ex.: Two young men sitting close on a beach at sunset, medium shot, warm golden light." });
+    ta.value = f.prompt; ta.oninput = () => { f.prompt = ta.value; saveSDraft(); };
+    box.append(ta, h("p", { class: "small muted", style: "margin:0" }, "Os personagens da lista entram como referência para manter os rostos."));
+  }
+  return box;
+}
+async function viewStory(v){
+  if (!state.sdraft){
+    v.append(h("h2", { style: "margin-bottom:12px" }, "Nova cena"));
+    const projs = await loadLooks("historia");
+    if (!projs.length) return v.append(h("div", { class: "card empty" }, "Crie um projeto de história na aba Fotos (Histórias) e suba personagens, cenários ou quadros prontos."));
+    const sel = h("select", {}, projs.map(l => h("option", { value: l }, pretty(l))));
+    v.append(h("div", { class: "card stack" }, h("label", { class: "field" }, "Projeto"), sel,
+      h("button", { class: "btn primary block", onclick: () => { startStory(sel.value); go("criar"); } }, "Começar")));
+    return;
+  }
+  const d = state.sdraft, rerender = () => { saveSDraft(); go("criar"); };
+  let presets = [];
+  try { presets = (await listDir("presets/story")).filter(f => f.name.endsWith(".json")).map(f => f.name.replace(/\.json$/, "")); } catch(e){}
+  v.append(h("div", { class: "row between", style: "margin-bottom:12px" }, h("h2", {}, "Nova cena"),
+    h("button", { class: "btn ghost small", onclick: () => { if (confirmLite("Descartar esta cena?")) { state.sdraft = null; saveSDraft(); go("criar"); } } }, "Descartar")));
+  const shot = h("input", { type: "text", value: d.shot, placeholder: "ex. ep01 cena03 encontro" }); shot.oninput = () => { d.shot = shot.value; saveSDraft(); };
+  v.append(h("div", { class: "card stack" },
+    h("div", { class: "row between" }, h("div", {}, h("div", { class: "small muted" }, "Projeto"), h("div", { style: "font-weight:600" }, pretty(d.folder))),
+      h("button", { class: "btn small", onclick: () => { state.sdraft = null; saveSDraft(); go("criar"); } }, "Trocar")),
+    h("div", {}, h("label", { class: "field" }, "Nome da cena"), shot),
+    h("div", {}, h("label", { class: "field" }, "O que fazer"), seg([["video", "Animar quadros"], ["keyframes", "Gerar quadros"], ["completo", "Tudo de uma vez"]], d.stage, x => { d.stage = x; rerender(); })),
+    h("p", { class: "small muted", style: "margin:0" }, d.stage === "video" ? "Anima fotos prontas. Mais rápido e mais previsível." :
+      d.stage === "keyframes" ? "Gera 4 opções de quadro (Qwen-Image 2.1) para você escolher. Depois anime o escolhido." :
+      "Gera o quadro e já anima, sem parar para aprovar. Mais arriscado.")));
+
+  // Personagens
+  const refs = h("div", { class: "card stack" }, h("h3", {}, "Personagens e cenários"),
+    h("p", { class: "small muted", style: "margin:0" }, "Até 9. Mantêm rosto, roupa e lugar iguais entre as cenas. A ordem define <Subject 1>, <Subject 2>..."));
+  d.refs.forEach((r, i) => {
+    const lab = h("input", { type: "text", value: r.label, placeholder: "nome (ex. Lucas)" }); lab.oninput = () => { r.label = lab.value; saveSDraft(); };
+    const s = slotEl(d.folder, r.image, "foto"); s.style.width = "64px"; s.onclick = () => photoPicker(d.folder, "Personagem ou cenário", p => { r.image = p; rerender(); });
+    refs.append(h("div", { class: "row", style: "align-items:flex-start;flex-wrap:nowrap" }, s, h("div", { class: "grow stack" },
+      h("div", { class: "small muted" }, `<Subject ${i + 1}>`), lab, h("button", { class: "btn small ghost", onclick: () => { d.refs.splice(i, 1); rerender(); } }, "Remover"))));
+  });
+  if (d.refs.length < 9) refs.append(h("button", { class: "btn small", onclick: () => photoPicker(d.folder, "Personagem ou cenário", p => { d.refs.push({ image: p, label: "" }); rerender(); }) }, "+ Personagem ou cenário"));
+  v.append(refs);
+
+  // Quadros
+  v.append(h("div", { class: "card stack" }, h("h3", {}, "Quadros"),
+    frameEditor(d, "first", "Primeiro quadro", false, rerender),
+    frameEditor(d, "last", "Último quadro (opcional)", true, rerender)));
+
+  // Movimento
+  if (d.stage !== "keyframes"){
+    const ta = h("textarea", { placeholder: "Ex.: <Subject 1> turns his head and looks at <Subject 2>, who smiles shyly and looks away. Slow push-in, soft evening light, sound of waves." });
+    ta.value = d.motion;
+    const chips = h("div", { class: "row" }, d.refs.map((r, i) => h("button", { class: "btn small", onclick: () => {
+      const tok = `<Subject ${i + 1}>`; const pos = ta.selectionStart ?? ta.value.length;
+      ta.value = ta.value.slice(0, pos) + tok + ta.value.slice(pos); d.motion = ta.value; saveSDraft(); refresh(); ta.focus();
+    } }, `${r.label || "Subject " + (i + 1)}`)));
+    ta.oninput = () => { d.motion = ta.value; saveSDraft(); refresh(); };
+    v.append(h("div", { class: "card stack" }, h("h3", {}, "Ação e câmera"), d.refs.length ? chips : null, ta,
+      h("div", {}, h("label", { class: "field" }, "Duração"), seg([["5", "5 s"], ["6", "6 s"], ["8", "8 s"], ["10", "10 s"], ["15", "15 s"]], String(d.duration), x => { d.duration = +x; rerender(); }))));
+  }
+
+  // Acabamento
+  v.append(h("div", { class: "card stack" }, h("h3", {}, "Modelos e acabamento"),
+    h("div", {}, h("label", { class: "field" }, "Qualidade"), seg(QUALITIES, d.quality, x => { d.quality = x; saveSDraft(); })),
+    h("div", {}, h("label", { class: "field" }, "Formato"), seg([["9:16", "9:16"], ["16:9", "16:9"], ["1:1", "1:1"], ["4:5", "4:5"]], d.aspect, x => { d.aspect = x; saveSDraft(); })),
+    h("div", {}, h("label", { class: "field" }, "Estilo (preset)"), h("select", { onchange: e => { d.style = e.target.value; saveSDraft(); } },
+      h("option", { value: "", selected: !d.style }, "Nenhum (realista, guiado pelas fotos)"), presets.map(n => h("option", { value: n, selected: d.style === n }, n)))),
+    h("div", {}, h("label", { class: "field" }, "Textura"), seg([["nenhuma", "Nenhuma"], ["limpa", "Limpa"], ["forte", "Forte"], ["extrema", "Extrema"]], d.texture, x => { d.texture = x; saveSDraft(); })),
+    h("div", {}, h("label", { class: "field" }, "Upscale"), seg([["ffmpeg", "Leve (rápido)"], ["seedvr2", "SeedVR2 (IA, lento)"]], d.upscale, x => { d.upscale = x; saveSDraft(); })),
+    sw("Áudio do H3", "Som ambiente e efeitos gerados junto com o vídeo.", d.audio, x => { d.audio = x; saveSDraft(); })));
+
+  const warns = h("div", { class: "stack" });
+  const gen = h("button", { class: "btn primary block", style: "margin-top:12px" }, d.stage === "keyframes" ? "Gerar quadros no pod" : "Gerar cena no pod");
+  const jsonPre = h("pre", { class: "json" });
+  const refresh = () => {
+    const w = storyChecks(d);
+    warns.replaceChildren(...w.map(([k, m]) => h("div", { class: "note " + (k === "err" ? "err" : k === "info" ? "info" : "") }, m)));
+    gen.disabled = w.some(x => x[0] === "err"); jsonPre.textContent = JSON.stringify(buildStoryJob(d), null, 2);
+  };
+  gen.onclick = async () => {
+    gen.disabled = true; const label = gen.textContent; gen.textContent = "Enviando...";
+    try {
+      const job = buildStoryJob(d), path = `jobs/story/${job.id}.json`;
+      await commitFiles([{ path, text: JSON.stringify(job, null, 2) + "\n" }], `App: cena ${job.id}`);
+      await dispatch(WF_STORY, { job_file: path, stage: job.stage, quality: job.quality, project: job.project });
+      toast("Enviado! Acompanhe em Execuções."); setTimeout(() => go("execucoes"), 900);
+    } catch(e){ gen.disabled = false; gen.textContent = label; toast("Erro: " + e.message, 6000); }
+  };
+  v.append(warns, gen, h("details", { style: "margin-top:16px" }, h("summary", {}, "Ver o arquivo que será enviado"), jsonPre));
+  refresh();
+}
+
 /* ============ EXECUÇÕES ============ */
 const STATUS = { queued: ["Na fila", "warn"], waiting: ["Na fila", "warn"], pending: ["Na fila", "warn"], requested: ["Na fila", "warn"],
   in_progress: ["Rodando", "run"], success: ["Pronto", "ok"], failure: ["Falhou", "bad"], cancelled: ["Cancelado", "bad"], timed_out: ["Tempo esgotado", "bad"] };
@@ -605,8 +755,9 @@ async function viewRuns(v){
   const box = h("div", { class: "card" }, h("div", { class: "empty" }, "Carregando..."));
   v.append(box);
   const load = async () => {
-    const [a, b] = await Promise.all([gh(`actions/workflows/${WF_FASHION}/runs?per_page=15`), gh(`actions/workflows/${WF_EDIT}/runs?per_page=10`).catch(() => ({ workflow_runs: [] }))]);
-    const runs = [...a.workflow_runs.map(r => ({ ...r, kind: "fashion" })), ...b.workflow_runs.map(r => ({ ...r, kind: "edicao" }))]
+    const none = () => ({ workflow_runs: [] });
+    const [a, b, c] = await Promise.all([gh(`actions/workflows/${WF_FASHION}/runs?per_page=15`), gh(`actions/workflows/${WF_EDIT}/runs?per_page=10`).catch(none), gh(`actions/workflows/${WF_STORY}/runs?per_page=10`).catch(none)]);
+    const runs = [...a.workflow_runs.map(r => ({ ...r, kind: "fashion" })), ...b.workflow_runs.map(r => ({ ...r, kind: "edicao" })), ...c.workflow_runs.map(r => ({ ...r, kind: "story" }))]
       .sort((x, y) => new Date(y.created_at) - new Date(x.created_at)).slice(0, 20);
     box.replaceChildren();
     if (!runs.length) box.append(h("div", { class: "empty" }, "Nenhuma execução ainda."));
@@ -615,12 +766,12 @@ async function viewRuns(v){
       const st = r.status === "completed" ? r.conclusion : r.status;
       const [label, cls] = STATUS[st] || [st, ""];
       if (r.status !== "completed") active = true;
-      const title = (r.display_title || "").replace(/^Moda jobs\/fashion\//, "").replace(/^Edicao edits\//, "").replace(/\.json$/, "");
+      const title = (r.display_title || "").replace(/^Moda jobs\/fashion\//, "").replace(/^Edicao edits\//, "").replace(/^Historia jobs\/story\//, "").replace(/\.json$/, "");
       const dur = r.status === "completed" ? fmtDur((new Date(r.updated_at) - new Date(r.run_started_at || r.created_at)) / 1000)
         : r.status === "in_progress" ? "há " + fmtDur((Date.now() - new Date(r.run_started_at || r.created_at)) / 1000) : "";
       box.append(h("div", { class: "list-item" },
         h("div", { class: "grow" },
-          h("div", { class: "ellipsis", style: "font-weight:600" }, (r.kind === "edicao" ? "✂ " : "") + (title || r.name)),
+          h("div", { class: "ellipsis", style: "font-weight:600" }, (r.kind === "edicao" ? "✂ " : r.kind === "story" ? "🎬 " : "") + (title || r.name)),
           h("div", { class: "small muted" }, `#${r.run_number} · ${ago(r.created_at)}${dur ? " · " + dur : ""}`)),
         h("div", { class: "row", style: "justify-content:flex-end" },
           h("span", { class: "pill " + cls }, label),
@@ -638,7 +789,7 @@ function previewFor(paths, src){
   return paths.find(p => p === stem + "-textura-extrema.mp4") || paths.find(p => p.startsWith(stem + "-textura-")) || src;
 }
 async function showResults(run){
-  const branch = `resultados/${run.kind === "edicao" ? "edicao" : "fashion"}-${run.run_number}`;
+  const branch = `resultados/${run.kind}-${run.run_number}`;
   const body = h("div", { class: "stack" }, h("div", { class: "empty" }, "Carregando..."));
   openSheet(`Execução #${run.run_number}`, body);
   let tree;
@@ -669,7 +820,9 @@ async function showResults(run){
       h("span", { class: "small muted" }, `${(bySha[preview].size / 1e6).toFixed(1)} MB`)), holder, h("div", { class: "row" }, play, extra || null));
   };
 
-  if (run.kind === "edicao"){
+  if (run.kind === "story"){
+    renderStoryResults(body, files, bySha, branch, videoCard);
+  } else if (run.kind === "edicao"){
     for (const p of mp4) body.append(videoCard(baseName(p).replace(/\.mp4$/, ""), p, p));
   } else {
     const jobIds = [...new Set(mp4.map(p => p.split("/")[2]).filter(Boolean))];
@@ -696,7 +849,7 @@ async function showResults(run){
       }
     }
   }
-  if (!mp4.length) body.append(h("div", { class: "empty" }, "Nenhum vídeo nesta execução."));
+  if (!mp4.length && run.kind !== "story") body.append(h("div", { class: "empty" }, "Nenhum vídeo nesta execução."));
   if (log){
     const pre = h("pre", { class: "json" }, "...");
     body.append(h("details", {}, h("summary", { ontoggle: null }, "Log da execução"), pre));
@@ -707,6 +860,47 @@ async function showResults(run){
     });
   }
   body.append(h("a", { class: "btn small ghost", href: run.html_url, target: "_blank", rel: "noopener" }, "Ver no GitHub"));
+}
+function renderStoryResults(body, files, bySha, branch, videoCard){
+  const paths = files.map(f => f.path).filter(p => p.startsWith("artifacts/story/") && !p.includes("/inputs/"));
+  const imgs = paths.filter(p => /\.(png|jpe?g|webp)$/i.test(p));
+  const vids = paths.filter(p => p.endsWith(".mp4"));
+  const raws = vids.filter(p => !/-textura-/.test(p) && !/-\d{3,4}p\.mp4$/.test(p));
+  for (const raw of raws){
+    const stem = raw.replace(/\.mp4$/, "");
+    const up = vids.find(p => p.startsWith(stem + "-") && /-\d{3,4}p\.mp4$/.test(p) && !p.includes("-textura-"));
+    const src = up || raw, preview = previewFor(vids, src);
+    const parts = raw.split("/");
+    body.append(videoCard("Vídeo da cena", src, preview, h("button", { class: "btn small", onclick: () => addClip({ label: `${parts[2]} · ${parts[3].slice(0, 24)}`, branch, path: src, preview, sha: bySha[preview].sha }) }, "+ Edição")));
+  }
+  if (imgs.length){
+    const detail = h("div", { class: "stack" });
+    const grid = h("div", { class: "grid" });
+    for (const p of imgs){
+      const f = bySha[p];
+      grid.append(h("button", { class: "thumb", onclick: () => showFrame(p, f) }, thumbImg({ name: baseName(p), sha: f.sha }), h("span", { class: "cap" }, baseName(p))));
+    }
+    const showFrame = (p, f) => {
+      const project = p.split("/")[2], folder = `${ROOTS.historia}/${project}`;
+      const img = h("img", { style: "width:100%;border-radius:10px" }); blobBySha(f.sha, "image/png").then(u => img.src = u);
+      const save = async (andAnimate) => {
+        try {
+          const dest = `${folder}/${stamp()}-${baseName(p).replace(/[^a-zA-Z0-9._-]/g, "-")}`;
+          await commitFiles([{ path: dest, sha: f.sha }], `App: quadro aprovado em ${project}`);
+          delete state.photos[folder]; state.looksBy = {};
+          if (andAnimate){ startStory(folder, dest); setMode("historia"); closeSheet(); go("criar"); toast("Quadro salvo. Agora descreva a ação."); }
+          else toast("Quadro salvo no projeto " + project);
+        } catch(e){ toast("Erro: " + e.message, 6000); }
+      };
+      detail.replaceChildren(img, h("div", { class: "row" },
+        h("button", { class: "btn small primary", onclick: () => save(true) }, "Animar este quadro"),
+        h("button", { class: "btn small", onclick: () => save(false) }, "Só salvar no projeto")));
+      detail.scrollIntoView({ behavior: "smooth" });
+    };
+    body.append(h("div", { class: "card stack" }, h("h3", {}, "Quadros gerados"),
+      h("p", { class: "small muted", style: "margin:0" }, "Toque no quadro que você aprovar para salvar no projeto ou já animar."), grid, detail));
+  }
+  if (!imgs.length && !vids.length) body.append(h("div", { class: "empty" }, "Nada gerado nesta execução."));
 }
 async function redoTake(id, n, branch){
   if (!confirmLite(`Refazer o take ${n} em qualidade máxima? Leva ~30 a 45 min de pod.`)) return;
@@ -732,6 +926,7 @@ function addClip(c){
 }
 async function viewEdicao(v){
   const e = state.edit, rerender = () => { saveEdit(); go("edicao"); };
+  e.format = e.format || "vertical";
   v.append(h("div", { class: "row between", style: "margin-bottom:12px" }, h("h2", {}, "Edição"),
     e.clips.length ? h("button", { class: "btn ghost small", onclick: () => { if (confirmLite("Limpar todos os trechos?")) { e.clips = []; rerender(); } } }, "Limpar") : null));
   if (!e.clips.length){
@@ -744,6 +939,7 @@ async function viewEdicao(v){
   const name = h("input", { type: "text", value: e.name, placeholder: "ex. vestido verde stories v2" }); name.oninput = () => { e.name = name.value; saveEdit(); };
   v.append(h("div", { class: "card stack" }, h("div", {}, h("label", { class: "field" }, "Nome da edição"), name),
     h("div", {}, h("label", { class: "field" }, "Textura no filme inteiro"), seg([["extrema", "Extrema"], ["forte", "Forte"], ["limpa", "Limpa"], ["nenhuma", "Nenhuma"]], e.texture, x => { e.texture = x; saveEdit(); })),
+    h("div", {}, h("label", { class: "field" }, "Formato final"), seg([["vertical", "Vertical 9:16"], ["horizontal", "Horizontal 16:9"], ["quadrado", "Quadrado"]], e.format, x => { e.format = x; saveEdit(); })),
     h("p", { class: "small muted", style: "margin:0" }, "Os cortes usam a versão sem textura de cada take; a textura é aplicada uma vez no final, igual às edições que aprovamos.")));
 
   e.clips.forEach((c, i) => {
@@ -783,7 +979,8 @@ async function viewEdicao(v){
     mount.disabled = true; mount.textContent = "Enviando...";
     try {
       const id = `${slug(e.name) || "edicao"}-${stamp()}`;
-      const spec = { id, texture: e.texture, width: 1080, height: 1890,
+      const [W, H] = { vertical: [1080, 1890], horizontal: [1890, 1080], quadrado: [1080, 1080] }[e.format || "vertical"];
+      const spec = { id, texture: e.texture, width: W, height: H,
         segments: e.clips.map(c => ({ branch: c.branch, path: c.path, start: +c.start, end: +c.end, label: c.label })) };
       const path = `edits/${id}.json`;
       await commitFiles([{ path, text: JSON.stringify(spec, null, 2) + "\n" }], `App: edição ${id}`);
