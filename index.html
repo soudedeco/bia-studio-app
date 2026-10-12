@@ -176,7 +176,7 @@ const blobToB64 = b => new Promise((res, rej) => { const r = new FileReader(); r
 /* ============ GitHub API ============ */
 async function gh(path, opts = {}){
   if (!cfg.token) throw new Error("Configure o acesso ao GitHub (engrenagem no topo).");
-  const url = path.startsWith("http") ? path : `https://api.github.com/repos/${cfg.repo}/${path}`;
+  const url = path.startsWith("http") ? path : `https://api.github.com/repos/${cfg.repo}${path ? "/" + path : ""}`;
   const res = await fetch(url, { ...opts, headers: { Authorization: `Bearer ${cfg.token}`, Accept: opts.accept || "application/vnd.github+json",
     "X-GitHub-Api-Version": "2022-11-28", ...(opts.body ? { "Content-Type": "application/json" } : {}) } });
   if (opts.raw) { if (!res.ok) throw new Error(`GitHub ${res.status}`); return res; }
