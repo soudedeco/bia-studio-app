@@ -1,0 +1,9 @@
+{
+  "name": "Bia Studio",
+  "short_name": "Bia Studio",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f6f3ee",
+  "theme_color": "#1d1b19",
+  "icons": [{ "src": "icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }]
+}

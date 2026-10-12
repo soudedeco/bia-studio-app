@@ -1,0 +1,811 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bia Studio</title>
+<meta name="description" content="Gerar vídeos de moda no pod a partir de fotos reais.">
+<meta name="theme-color" content="#f6f3ee" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#151413" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Bia Studio">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f3ee; --surface:#fffdf9; --surface-2:#efebe4; --line:#e2ddd4; --ink:#1d1b19; --muted:#78716a;
+  --accent:#1d1b19; --accent-ink:#fffdf9; --ok:#2f7a4c; --warn:#a6621b; --bad:#b0362f; --run:#3a62a8;
+  --radius:14px; --shadow:0 1px 2px rgba(0,0,0,.05),0 6px 20px rgba(0,0,0,.05);
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#151413; --surface:#1e1c1a; --surface-2:#282522; --line:#34302c; --ink:#f1ece4; --muted:#a39b91;
+    --accent:#f1ece4; --accent-ink:#151413; --ok:#5fbf85; --warn:#e2a35a; --bad:#ec7a70; --run:#86a8e6; --shadow:none; }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Inter,system-ui,-apple-system,sans-serif;-webkit-text-size-adjust:100%}
+body{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+h1,h2,h3{font-family:"Cormorant Garamond",Georgia,serif;font-weight:600;letter-spacing:.01em;margin:0}
+h1{font-size:26px} h2{font-size:22px} h3{font-size:18px}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:inherit}
+header.top{position:sticky;top:0;z-index:5;background:var(--bg);display:flex;align-items:center;justify-content:space-between;
+  padding:calc(12px + env(safe-area-inset-top)) 16px 10px;border-bottom:1px solid var(--line)}
+header.top small{display:block;color:var(--muted);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+main{max-width:720px;margin:0 auto;padding:16px}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:repeat(4,1fr);
+  background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav.tabs button{background:none;border:0;padding:10px 4px 12px;display:flex;flex-direction:column;align-items:center;gap:3px;
+  color:var(--muted);font-size:12px;cursor:pointer}
+nav.tabs button svg{width:22px;height:22px}
+nav.tabs button.on{color:var(--ink);font-weight:600}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:12px;box-shadow:var(--shadow)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.between{justify-content:space-between}
+.stack>*+*{margin-top:10px}
+.muted{color:var(--muted)} .small{font-size:13px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:9px 14px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.small{padding:6px 11px;font-size:13px}
+.btn.block{width:100%;justify-content:center;padding:13px}
+.btn:disabled{opacity:.45;cursor:default}
+.icon-btn{border:0;background:none;padding:6px;cursor:pointer;color:var(--ink)}
+.icon-btn svg{width:22px;height:22px;display:block}
+label.field{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+input[type=text],input[type=password],input[type=number],select,textarea{width:100%;background:var(--surface-2);border:1px solid var(--line);
+  border-radius:10px;padding:10px 12px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--ink)}
+textarea{min-height:92px;resize:vertical}
+.seg{display:flex;background:var(--surface-2);border-radius:999px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{flex:1;border:0;background:none;border-radius:999px;padding:7px 10px;cursor:pointer;font-size:13px;color:var(--muted);white-space:nowrap}
+.seg button.on{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.switch{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0}
+.switch input{appearance:none;width:44px;height:26px;border-radius:99px;background:var(--line);position:relative;cursor:pointer;flex:none;transition:.15s}
+.switch input::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.15s}
+.switch input:checked{background:var(--ok)}
+.switch input:checked::after{left:21px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media (min-width:560px){.grid{grid-template-columns:repeat(4,1fr)}}
+.thumb{position:relative;aspect-ratio:2/3;border-radius:10px;overflow:hidden;background:var(--surface-2);border:1px solid var(--line);cursor:pointer;padding:0}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .cap{position:absolute;left:0;right:0;bottom:0;padding:16px 6px 5px;font-size:11px;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.6));
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
+.thumb.sel{outline:3px solid var(--ok);outline-offset:-3px}
+.thumb .badge{position:absolute;top:6px;left:6px;background:var(--ok);color:#fff;border-radius:99px;font-size:11px;padding:1px 7px;font-weight:600}
+.slot{width:86px;aspect-ratio:2/3;border-radius:10px;border:1.5px dashed var(--line);display:flex;align-items:center;justify-content:center;
+  text-align:center;font-size:12px;color:var(--muted);background:var(--surface-2);cursor:pointer;overflow:hidden;padding:0;flex:none}
+.slot img{width:100%;height:100%;object-fit:cover}
+.pill{display:inline-block;border-radius:99px;padding:2px 9px;font-size:12px;font-weight:600;background:var(--surface-2)}
+.pill.ok{color:var(--ok)} .pill.bad{color:var(--bad)} .pill.run{color:var(--run)} .pill.warn{color:var(--warn)}
+.note{border-left:3px solid var(--warn);padding:6px 10px;background:var(--surface-2);border-radius:6px;font-size:13px}
+.note.err{border-color:var(--bad)} .note.info{border-color:var(--run)}
+.list-item{display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.list-item:last-child{border-bottom:0}
+.grow{flex:1;min-width:0}
+.ellipsis{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+video{width:100%;max-height:70vh;border-radius:10px;background:#000;display:block}
+dialog{border:0;border-radius:18px 18px 0 0;padding:0;margin:auto auto 0;width:100%;max-width:720px;max-height:92vh;background:var(--surface);color:var(--ink)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog .sheet-head{position:sticky;top:0;background:var(--surface);display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line);z-index:2}
+dialog .sheet-body{padding:16px;overflow:auto}
+#toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);
+  padding:10px 16px;border-radius:12px;font-size:14px;z-index:50;opacity:0;pointer-events:none;transition:.2s;max-width:90vw;text-align:center}
+#toast.show{opacity:1}
+.empty{text-align:center;color:var(--muted);padding:30px 10px}
+.crop-wrap{position:relative;touch-action:none;user-select:none;margin:0 auto;max-width:100%}
+.crop-wrap img{display:block;width:100%}
+.crop-box{position:absolute;border:2px solid #fff;box-shadow:0 0 0 9999px rgba(0,0,0,.5);cursor:move}
+input[type=range]{width:100%}
+.take-head{display:flex;justify-content:space-between;align-items:center}
+.num{font-family:"Cormorant Garamond",serif;font-size:22px;font-weight:600}
+pre.json{background:var(--surface-2);padding:10px;border-radius:10px;font-size:11px;overflow:auto;max-height:260px}
+.progress{height:4px;background:var(--surface-2);border-radius:4px;overflow:hidden}
+.progress>div{height:100%;background:var(--ok);width:0;transition:width .2s}
+details summary{cursor:pointer;color:var(--muted);font-size:13px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<header class="top">
+  <div><small>Bia Souza</small><h1>Studio</h1></div>
+  <button class="icon-btn" id="btn-settings" aria-label="Configurações">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+  </button>
+</header>
+<main id="view"></main>
+<nav class="tabs">
+  <button data-tab="looks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="9" rx="1.5"/><rect x="3" y="15" width="7" height="6" rx="1.5"/><rect x="14" y="15" width="7" height="6" rx="1.5"/></svg>Looks</button>
+  <button data-tab="criar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="14" height="14" rx="2"/><path d="M17 10l4-2.5v9L17 14"/></svg>Criar</button>
+  <button data-tab="execucoes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Execuções</button>
+  <button data-tab="edicao"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"/></svg>Edição</button>
+</nav>
+<dialog id="sheet"><div class="sheet-head"><h3 id="sheet-title"></h3><button class="icon-btn" id="sheet-close" aria-label="Fechar">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="sheet-body" id="sheet-body"></div></dialog>
+<div id="toast"></div>
+<input type="file" id="file-input" accept="image/*" multiple class="hidden">
+
+<script>
+"use strict";
+/* ============ estado e armazenamento ============ */
+const LS = {
+  get(k, d){ try{ const v = localStorage.getItem("bia." + k); return v == null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem("bia." + k, JSON.stringify(v)); }catch(e){} }
+};
+const cfg = Object.assign({ token:"", repo:"soudedeco/bia-ai-studio", branch:"main" }, LS.get("cfg", {}));
+const ASSETS = "assets/fashion";
+const WF_FASHION = "fashion-job.yml", WF_EDIT = "montar-edicao.yml";
+const state = {
+  tab: LS.get("tab", "looks"),
+  look: LS.get("look", ""),
+  draft: LS.get("draft", null),
+  edit: LS.get("edit", { name:"", texture:"extrema", clips:[] }),
+  looks: null, photos: {}, blobs: new Map(), runsTimer: null
+};
+const saveDraft = () => LS.set("draft", state.draft);
+const saveEdit = () => LS.set("edit", state.edit);
+
+/* ============ utilitários ============ */
+const $ = s => document.querySelector(s);
+function h(tag, attrs, ...kids){
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})){
+    if (v == null || v === false) continue;
+    if (k === "class") e.className = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (k === "html") e.innerHTML = v;
+    else if (v === true) e.setAttribute(k, "");
+    else e.setAttribute(k, v);
+  }
+  for (const c of kids.flat()){ if (c == null || c === false) continue; e.append(c.nodeType ? c : document.createTextNode(String(c))); }
+  return e;
+}
+function toast(msg, ms = 2600){ const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove("show"), ms); }
+const slug = s => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48);
+const stamp = () => { const d = new Date(), p = n => String(n).padStart(2, "0"); return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`; };
+const fmtDur = s => s < 60 ? `${Math.round(s)} s` : s < 3600 ? `${Math.floor(s/60)} min` : s < 172800 ? `${Math.floor(s/3600)} h ${Math.floor(s%3600/60)} min` : `${Math.floor(s/86400)} dias`;
+const ago = iso => fmtDur((Date.now() - new Date(iso)) / 1000) + " atrás";
+const baseName = p => p.split("/").pop();
+const blobToB64 = b => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.onerror = rej; r.readAsDataURL(b); });
+
+/* ============ GitHub API ============ */
+async function gh(path, opts = {}){
+  if (!cfg.token) throw new Error("Configure o acesso ao GitHub (engrenagem no topo).");
+  const url = path.startsWith("http") ? path : `https://api.github.com/repos/${cfg.repo}/${path}`;
+  const res = await fetch(url, { ...opts, headers: { Authorization: `Bearer ${cfg.token}`, Accept: opts.accept || "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28", ...(opts.body ? { "Content-Type": "application/json" } : {}) } });
+  if (opts.raw) { if (!res.ok) throw new Error(`GitHub ${res.status}`); return res; }
+  if (res.status === 204) return null;
+  const data = await res.json().catch(() => null);
+  if (!res.ok){
+    const err = new Error((data && data.message) || `GitHub ${res.status}`); err.status = res.status; throw err;
+  }
+  return data;
+}
+const ghJSON = (path, body, method = "POST") => gh(path, { method, body: JSON.stringify(body) });
+async function listDir(path, ref = cfg.branch){
+  try { const d = await gh(`contents/${path}?ref=${encodeURIComponent(ref)}`); return Array.isArray(d) ? d : []; }
+  catch(e){ if (e.status === 404) return []; throw e; }
+}
+async function blobBySha(sha, type){
+  if (state.blobs.has(sha)) return state.blobs.get(sha);
+  const res = await gh(`git/blobs/${sha}`, { raw: true, accept: "application/vnd.github.raw" });
+  const b = await res.blob();
+  const url = URL.createObjectURL(type ? new Blob([b], { type }) : b);
+  state.blobs.set(sha, url); return url;
+}
+async function textByPath(path, ref){
+  const res = await gh(`contents/${path}?ref=${encodeURIComponent(ref)}`, { raw: true, accept: "application/vnd.github.raw" });
+  return res.text();
+}
+/* Grava vários arquivos num único commit (Git Data API). files: [{path, b64}] ou [{path, text}] */
+async function commitFiles(files, message, branch = cfg.branch, onProgress){
+  for (let attempt = 0; attempt < 2; attempt++){
+    const ref = await gh(`git/ref/heads/${encodeURIComponent(branch)}`);
+    const head = await gh(`git/commits/${ref.object.sha}`);
+    const tree = [];
+    let i = 0;
+    for (const f of files){
+      const blob = f.text != null ? await ghJSON("git/blobs", { content: f.text, encoding: "utf-8" })
+                                  : await ghJSON("git/blobs", { content: f.b64, encoding: "base64" });
+      tree.push({ path: f.path, mode: "100644", type: "blob", sha: blob.sha });
+      onProgress && onProgress(++i / files.length);
+    }
+    const t = await ghJSON("git/trees", { base_tree: head.tree.sha, tree });
+    const c = await ghJSON("git/commits", { message, tree: t.sha, parents: [head.sha] });
+    try { await ghJSON(`git/refs/heads/${encodeURIComponent(branch)}`, { sha: c.sha }, "PATCH"); return c.sha; }
+    catch(e){ if (attempt === 1) throw e; }
+  }
+}
+const dispatch = (wf, inputs) => ghJSON(`actions/workflows/${wf}/dispatches`, { ref: cfg.branch, inputs });
+
+/* ============ imagens ============ */
+async function resizeImage(file, maxSide = 2560){
+  const bmp = await createImageBitmap(file, { imageOrientation: "from-image" }).catch(() => null);
+  let w, hgt, src = bmp;
+  if (!bmp){
+    src = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file); });
+  }
+  w = src.width; hgt = src.height;
+  const k = Math.min(1, maxSide / Math.max(w, hgt));
+  const c = document.createElement("canvas"); c.width = Math.round(w * k); c.height = Math.round(hgt * k);
+  c.getContext("2d").drawImage(src, 0, 0, c.width, c.height);
+  return new Promise(res => c.toBlob(res, "image/jpeg", 0.92));
+}
+async function loadPhotos(look, force){
+  if (!force && state.photos[look]) return state.photos[look];
+  const items = (await listDir(`${ASSETS}/${look}`)).filter(f => f.type === "file" && /\.(jpe?g|png|webp)$/i.test(f.name))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  state.photos[look] = items; return items;
+}
+function thumbImg(file){
+  const img = h("img", { alt: file.name, loading: "lazy" });
+  blobBySha(file.sha, /\.png$/i.test(file.name) ? "image/png" : "image/jpeg").then(u => img.src = u).catch(() => {});
+  return img;
+}
+
+/* ============ sheet (modal) ============ */
+const sheet = $("#sheet");
+function openSheet(title, body){ $("#sheet-title").textContent = title; const b = $("#sheet-body"); b.replaceChildren(body); if (!sheet.open) sheet.showModal(); }
+function closeSheet(){ if (sheet.open) sheet.close(); }
+$("#sheet-close").onclick = closeSheet;
+sheet.addEventListener("click", e => { if (e.target === sheet) closeSheet(); });
+
+/* ============ navegação ============ */
+const views = { looks: viewLooks, criar: viewCriar, execucoes: viewRuns, edicao: viewEdicao };
+function go(tab){
+  state.tab = tab; LS.set("tab", tab);
+  document.querySelectorAll("nav.tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
+  clearInterval(state.runsTimer);
+  const v = $("#view"); v.replaceChildren();
+  if (!cfg.token){ v.append(onboarding()); return; }
+  Promise.resolve(views[tab](v)).catch(err => v.append(h("div", { class: "note err" }, err.message)));
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll("nav.tabs button").forEach(b => b.onclick = () => go(b.dataset.tab));
+$("#btn-settings").onclick = () => openSettings();
+
+/* ============ configurações ============ */
+function onboarding(){
+  return h("div", { class: "card stack" },
+    h("h2", {}, "Primeiro acesso"),
+    h("p", { class: "muted" }, "O app conversa direto com o repositório privado. Para isso ele precisa de uma chave de acesso, que fica guardada só neste aparelho."),
+    h("ol", { class: "small" },
+      h("li", {}, "No GitHub: Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token."),
+      h("li", {}, "Repository access: Only select repositories → bia-ai-studio."),
+      h("li", {}, "Permissions: Contents = Read and write; Actions = Read and write."),
+      h("li", {}, "Gere, copie a chave e cole em Configurações.")),
+    h("a", { class: "btn small", href: "https://github.com/settings/personal-access-tokens/new", target: "_blank", rel: "noopener" }, "Abrir página de chaves"),
+    h("button", { class: "btn primary block", onclick: () => openSettings() }, "Colar a chave"));
+}
+function openSettings(){
+  const tok = h("input", { type: "password", value: cfg.token, placeholder: "github_pat_...", autocomplete: "off" });
+  const repo = h("input", { type: "text", value: cfg.repo });
+  const br = h("input", { type: "text", value: cfg.branch });
+  const out = h("div", { class: "small muted" });
+  const save = async () => {
+    cfg.token = tok.value.trim(); cfg.repo = repo.value.trim(); cfg.branch = br.value.trim() || "main";
+    LS.set("cfg", cfg); out.textContent = "Testando...";
+    try {
+      const r = await gh(""); await gh(`branches/${encodeURIComponent(cfg.branch)}`);
+      out.textContent = `Conectado a ${r.full_name} (branch ${cfg.branch}).`; state.looks = null; state.photos = {};
+      setTimeout(() => { closeSheet(); go(state.tab); }, 700);
+    } catch(e){ out.textContent = "Falhou: " + e.message; }
+  };
+  openSheet("Configurações", h("div", { class: "stack" },
+    h("div", {}, h("label", { class: "field" }, "Chave de acesso (fine-grained token)"), tok),
+    h("div", {}, h("label", { class: "field" }, "Repositório"), repo),
+    h("div", {}, h("label", { class: "field" }, "Branch"), br),
+    h("button", { class: "btn primary block", onclick: save }, "Salvar e testar"), out,
+    h("p", { class: "small muted" }, "A chave fica só no armazenamento deste navegador. Para remover, apague o campo e salve.")));
+}
+
+/* ============ LOOKS ============ */
+async function loadLooks(force){
+  if (state.looks && !force) return state.looks;
+  state.looks = (await listDir(ASSETS)).filter(d => d.type === "dir").map(d => d.name).sort();
+  return state.looks;
+}
+async function viewLooks(v){
+  if (state.look) return viewLook(v, state.look);
+  v.append(h("div", { class: "row between", style: "margin-bottom:12px" }, h("h2", {}, "Looks"),
+    h("button", { class: "btn primary small", onclick: newLook }, "+ Novo look")));
+  const box = h("div", {}, h("div", { class: "empty" }, "Carregando..."));
+  v.append(box);
+  const looks = await loadLooks(true);
+  box.replaceChildren();
+  if (!looks.length) { box.append(h("div", { class: "empty" }, "Nenhum look ainda. Crie o primeiro.")); return; }
+  const card = h("div", { class: "card" });
+  for (const l of looks){
+    const cover = h("div", { class: "slot", style: "width:54px" });
+    card.append(h("div", { class: "list-item", style: "cursor:pointer", onclick: () => { state.look = l; LS.set("look", l); go("looks"); } },
+      cover, h("div", { class: "grow" }, h("div", { class: "ellipsis", style: "font-weight:600" }, l.replace(/-/g, " ")), h("div", { class: "small muted" }, l)),
+      h("span", { class: "muted" }, "›")));
+    loadPhotos(l).then(ps => { if (ps[0]) cover.replaceChildren(thumbImg(ps[0])); }).catch(() => {});
+  }
+  box.append(card);
+}
+function newLook(){
+  const name = h("input", { type: "text", placeholder: "ex.: vestido verde babados" });
+  openSheet("Novo look", h("div", { class: "stack" },
+    h("label", { class: "field" }, "Nome do look (vira a pasta das fotos)"), name,
+    h("button", { class: "btn primary block", onclick: () => {
+      const s = slug(name.value); if (!s) return toast("Dê um nome ao look");
+      state.look = s; LS.set("look", s); state.photos[s] = []; closeSheet(); go("looks"); pickPhotos(s);
+    } }, "Criar e escolher fotos")));
+}
+async function viewLook(v, look){
+  v.append(h("div", { class: "row between", style: "margin-bottom:12px" },
+    h("button", { class: "btn ghost small", onclick: () => { state.look = ""; LS.set("look", ""); go("looks"); } }, "‹ Looks"),
+    h("button", { class: "btn primary small", onclick: () => pickPhotos(look) }, "+ Fotos")));
+  v.append(h("h2", {}, look.replace(/-/g, " ")));
+  v.append(h("p", { class: "small muted" }, "Toque numa foto para recortar um detalhe em 9:16 (ex.: barra, babado, bolso). O recorte vira uma foto nova do look."));
+  const grid = h("div", { class: "grid" });
+  v.append(grid);
+  const ps = await loadPhotos(look, true);
+  if (!ps.length) grid.replaceWith(h("div", { class: "empty" }, "Sem fotos ainda."));
+  for (const p of ps){
+    grid.append(h("button", { class: "thumb", onclick: () => cropEditor(look, p) }, thumbImg(p), h("span", { class: "cap" }, p.name)));
+  }
+  v.append(h("button", { class: "btn block", style: "margin-top:16px", onclick: () => { startDraft(look); go("criar"); } }, "Criar vídeo com este look →"));
+}
+function pickPhotos(look){
+  const inp = $("#file-input"); inp.value = "";
+  inp.onchange = () => { if (inp.files.length) uploadForm(look, [...inp.files]); };
+  inp.click();
+}
+function uploadForm(look, files){
+  const existing = (state.photos[look] || []).length;
+  const rows = files.map((f, i) => {
+    const img = h("img", { src: URL.createObjectURL(f), style: "width:54px;height:80px;object-fit:cover;border-radius:8px" });
+    const desc = h("input", { type: "text", placeholder: "descrição curta (ex. frente olhando câmera)" });
+    return { f, desc, el: h("div", { class: "list-item" }, img, h("div", { class: "grow" }, h("div", { class: "small muted" }, `Foto ${existing + i + 1}`), desc)) };
+  });
+  const bar = h("div", { class: "progress hidden" }, h("div"));
+  const btn = h("button", { class: "btn primary block" }, `Enviar ${files.length} foto(s)`);
+  btn.onclick = async () => {
+    btn.disabled = true; bar.classList.remove("hidden");
+    try {
+      const out = [];
+      for (let i = 0; i < rows.length; i++){
+        const blob = await resizeImage(rows[i].f);
+        const n = String(existing + i + 1).padStart(2, "0");
+        out.push({ path: `${ASSETS}/${look}/${n}-${slug(rows[i].desc.value) || "foto"}.jpg`, b64: await blobToB64(blob) });
+        bar.firstChild.style.width = `${(i + 1) / rows.length * 40}%`;
+      }
+      await commitFiles(out, `App: fotos do look ${look}`, cfg.branch, p => bar.firstChild.style.width = `${40 + p * 60}%`);
+      toast("Fotos enviadas"); closeSheet(); state.looks = null; go("looks");
+    } catch(e){ btn.disabled = false; toast("Erro: " + e.message, 5000); }
+  };
+  openSheet("Enviar fotos", h("div", { class: "stack" }, h("div", {}, rows.map(r => r.el)), bar, btn,
+    h("p", { class: "small muted" }, "As fotos são reduzidas para 2560 px no lado maior antes de enviar. Mesmo cabelo, luz e fundo entre as fotos ajudam muito o vídeo.")));
+}
+function cropEditor(look, file){
+  const img = h("img", { alt: "" });
+  const box = h("div", { class: "crop-box" });
+  const wrap = h("div", { class: "crop-wrap" }, img, box);
+  const size = h("input", { type: "range", min: "20", max: "100", value: "55" });
+  const name = h("input", { type: "text", value: "detalhe" });
+  let bx = 0, by = 0, bw = 0, bh = 0;
+  const layout = (keepCenter = true) => {
+    const W = wrap.clientWidth, H = wrap.clientHeight; if (!W) return;
+    const maxW = Math.min(W, H * 9 / 16);
+    const cx = keepCenter && bw ? bx + bw / 2 : W / 2, cy = keepCenter && bh ? by + bh / 2 : H * 0.75;
+    bw = maxW * size.value / 100; bh = bw * 16 / 9;
+    bx = Math.max(0, Math.min(W - bw, cx - bw / 2)); by = Math.max(0, Math.min(H - bh, cy - bh / 2));
+    Object.assign(box.style, { left: bx + "px", top: by + "px", width: bw + "px", height: bh + "px" });
+  };
+  img.onload = () => layout(false);
+  blobBySha(file.sha, "image/jpeg").then(u => img.src = u);
+  size.oninput = () => layout(true);
+  let drag = null;
+  box.addEventListener("pointerdown", e => { drag = { x: e.clientX, y: e.clientY, bx, by }; box.setPointerCapture(e.pointerId); });
+  box.addEventListener("pointermove", e => {
+    if (!drag) return; const W = wrap.clientWidth, H = wrap.clientHeight;
+    bx = Math.max(0, Math.min(W - bw, drag.bx + e.clientX - drag.x)); by = Math.max(0, Math.min(H - bh, drag.by + e.clientY - drag.y));
+    box.style.left = bx + "px"; box.style.top = by + "px";
+  });
+  box.addEventListener("pointerup", () => drag = null);
+  const btn = h("button", { class: "btn primary block" }, "Salvar recorte como foto nova");
+  btn.onclick = async () => {
+    btn.disabled = true;
+    try {
+      const k = img.naturalWidth / wrap.clientWidth;
+      const sw = bw * k, sh = bh * k, outW = Math.min(1440, Math.round(sw)), outH = Math.round(outW * 16 / 9);
+      const c = document.createElement("canvas"); c.width = outW; c.height = outH;
+      c.getContext("2d").drawImage(img, bx * k, by * k, sw, sh, 0, 0, outW, outH);
+      const blob = await new Promise(r => c.toBlob(r, "image/jpeg", 0.92));
+      const n = String((state.photos[look] || []).length + 1).padStart(2, "0");
+      await commitFiles([{ path: `${ASSETS}/${look}/${n}-${slug(name.value) || "detalhe"}.jpg`, b64: await blobToB64(blob) }], `App: recorte ${look}`);
+      toast("Recorte salvo"); closeSheet(); go("looks");
+    } catch(e){ btn.disabled = false; toast("Erro: " + e.message, 5000); }
+  };
+  openSheet(file.name, h("div", { class: "stack" }, wrap,
+    h("div", {}, h("label", { class: "field" }, "Tamanho do recorte"), size),
+    h("div", {}, h("label", { class: "field" }, "Nome do recorte"), name), btn,
+    h("p", { class: "small muted" }, "Arraste o quadro. Recortes muito pequenos perdem nitidez no vídeo; prefira áreas de pelo menos meio corpo de largura.")));
+}
+
+/* ============ CRIAR ============ */
+const QUALITIES = [["final_rapido", "Rápido"], ["final", "Máxima"], ["rascunho", "Rascunho"]];
+function startDraft(look){
+  state.draft = { look, name: "", quality: "final_rapido", texture: "extrema", grain: "0", upscale: "ffmpeg", interp: false, audio: false,
+    useDetails: true, details: [], takes: [newTake()] };
+  saveDraft();
+}
+function newTake(){ return { start: "", end: "", duration: 5, prompt: "", quality: "" }; }
+function seg(options, value, onPick){
+  const s = h("div", { class: "seg" });
+  for (const [val, label] of options){
+    const b = h("button", { class: val === value ? "on" : "" }, label);
+    b.onclick = () => { onPick(val); [...s.children].forEach(x => x.classList.toggle("on", x === b)); };
+    s.append(b);
+  }
+  return s;
+}
+function sw(label, hint, checked, onChange){
+  const inp = h("input", { type: "checkbox" }); inp.checked = !!checked; inp.onchange = () => onChange(inp.checked);
+  return h("label", { class: "switch" }, h("div", {}, h("div", {}, label), hint ? h("div", { class: "small muted" }, hint) : null), inp);
+}
+function photoPicker(look, title, onPick, allowNone){
+  const grid = h("div", { class: "grid" });
+  const body = h("div", { class: "stack" }, allowNone ? h("button", { class: "btn block", onclick: () => { onPick(""); closeSheet(); } }, allowNone) : null, grid);
+  openSheet(title, body);
+  loadPhotos(look).then(ps => { for (const p of ps) grid.append(h("button", { class: "thumb", onclick: () => { onPick(p.path); closeSheet(); } }, thumbImg(p), h("span", { class: "cap" }, p.name))); });
+}
+function slotEl(look, path, label){
+  const s = h("div", { class: "slot" }, label);
+  if (path){ loadPhotos(look).then(ps => { const f = ps.find(p => p.path === path); if (f) s.replaceChildren(thumbImg(f)); }); }
+  return s;
+}
+function takeWarnings(t, i, n){
+  const w = [];
+  if (!t.start) w.push(["err", "Escolha a foto inicial."]);
+  if (!t.prompt.trim()) w.push(["err", "Descreva o movimento (de preferência em inglês)."]);
+  if (t.end && t.end === t.start) w.push(["warn", "Início e fim iguais: o modelo tende a ficar parado. Deixe o fim vazio para criação livre."]);
+  if (t.end && i < n - 1) w.push(["warn", "Foto final ancorada costuma congelar no fim do take. Funciona bem no último take; nos do meio, o corte vai precisar tirar o final."]);
+  if (t.end && t.duration > 6) w.push(["warn", "Muito tempo entre duas fotos diferentes costuma gerar alucinação (rosto, costas inventadas). 4 a 5 s é o mais seguro."]);
+  if (!t.end && t.duration > 6) w.push(["info", "Criação livre longa: o modelo tende a inventar zoom no meio. Peça câmera na mesma distância no prompt."]);
+  if (/\b(zoom|orbit|circle|around her|360)\b/i.test(t.prompt)) w.push(["info", "Giros e zooms fortes já inventaram detalhes de costas e mergulhos na cintura. Se acontecer, troque por tracking lateral ou push-in lento."]);
+  return w;
+}
+function buildJob(d){
+  const id = `${d.look}-${slug(d.name) || "filme"}-${stamp()}`;
+  const job = { id, pipeline: "fashion_video", preset: "fashion-film", quality: d.quality, aspect_ratio: "9:16",
+    film_texture: d.texture, video_upscale: d.upscale, prompt: "Cinematic fashion take." };
+  if (+d.grain) job.film_grain = +d.grain;
+  if (d.interp) job.frame_interpolation = true;
+  if (d.audio) job.keep_audio = true;
+  if (d.useDetails && d.details.length) job.detail_references = d.details.filter(x => x.image).map(x => ({ image: x.image, label: x.label || "the garment" }));
+  job.shots = d.takes.map(t => {
+    const s = { duration_seconds: +t.duration, prompt: t.prompt.trim(), keyframes: [{ image: t.start, at: 0 }] };
+    if (t.end) s.keyframes.push({ image: t.end, at: "fim" });
+    if (t.quality) s.quality = t.quality;
+    return s;
+  });
+  return job;
+}
+async function viewCriar(v){
+  const looks = await loadLooks();
+  if (!state.draft){
+    v.append(h("h2", { style: "margin-bottom:12px" }, "Novo vídeo"));
+    if (!looks.length) return v.append(h("div", { class: "empty" }, "Crie um look com fotos primeiro, na aba Looks."));
+    const sel = h("select", {}, looks.map(l => h("option", { value: l, selected: l === state.look }, l)));
+    v.append(h("div", { class: "card stack" }, h("label", { class: "field" }, "Look"), sel,
+      h("button", { class: "btn primary block", onclick: () => { startDraft(sel.value); go("criar"); } }, "Começar")));
+    return;
+  }
+  const d = state.draft, rerender = () => { saveDraft(); go("criar"); };
+  v.append(h("div", { class: "row between", style: "margin-bottom:12px" }, h("h2", {}, "Novo vídeo"),
+    h("button", { class: "btn ghost small", onclick: () => { if (confirmLite("Descartar este rascunho?")) { state.draft = null; saveDraft(); go("criar"); } } }, "Descartar")));
+
+  const name = h("input", { type: "text", value: d.name, placeholder: "ex. stories v1" }); name.oninput = () => { d.name = name.value; saveDraft(); };
+  v.append(h("div", { class: "card stack" },
+    h("div", { class: "row between" }, h("div", {}, h("div", { class: "small muted" }, "Look"), h("div", { style: "font-weight:600" }, d.look)),
+      h("button", { class: "btn small", onclick: () => { state.draft = null; saveDraft(); go("criar"); } }, "Trocar")),
+    h("div", {}, h("label", { class: "field" }, "Nome deste vídeo"), name)));
+
+  // Modelos e acabamento
+  const models = h("div", { class: "card stack" }, h("h3", {}, "Modelos e acabamento"),
+    h("div", {}, h("label", { class: "field" }, "Qualidade do vídeo (MiniMax H3)"), seg(QUALITIES, d.quality, x => { d.quality = x; saveDraft(); })),
+    h("p", { class: "small muted", style: "margin:4px 0 0" }, "Rápido: ~10 min por take, bom para aprovar. Máxima: 20 passos, ~30 a 45 min por take, use nos takes aprovados (e sempre em corpo inteiro)."),
+    h("div", {}, h("label", { class: "field" }, "Textura"), seg([["extrema", "Extrema"], ["forte", "Forte"], ["limpa", "Limpa"]], d.texture, x => { d.texture = x; saveDraft(); })),
+    h("div", {}, h("label", { class: "field" }, "Granulado extra"), seg([["0", "Nenhum"], ["7", "Leve"], ["12", "Médio"], ["18", "Forte"]], String(d.grain), x => { d.grain = x; saveDraft(); })),
+    h("div", {}, h("label", { class: "field" }, "Upscale para 1080"), seg([["ffmpeg", "Leve (rápido)"], ["seedvr2", "SeedVR2 (IA, lento)"]], d.upscale, x => { d.upscale = x; saveDraft(); })),
+    sw("Interpolação FILM", "Dobra para 48 quadros/s. Mais fluido, mais tempo de pod.", d.interp, x => { d.interp = x; saveDraft(); }),
+    sw("Áudio do H3", "O modelo gera som ambiente junto. Normalmente descartado.", d.audio, x => { d.audio = x; saveDraft(); }),
+    sw("Referências de detalhe (modo ref2va)", "Fotos de apoio para manter tecido, rosto e cabelo fiéis. Recomendado.", d.useDetails, x => { d.useDetails = x; rerender(); }));
+  v.append(models);
+
+  if (d.useDetails){
+    const box = h("div", { class: "card stack" }, h("h3", {}, "Referências de detalhe"),
+      h("p", { class: "small muted", style: "margin:0" }, "Até 4 fotos. Descreva em inglês o que cada uma mostra: a peça, a modelo, um detalhe."));
+    d.details.forEach((x, i) => {
+      const lab = h("input", { type: "text", value: x.label, placeholder: i === 0 ? "the green pinstripe satin slip dress with cascading ruffles" : "the model, her face and hair" });
+      lab.oninput = () => { x.label = lab.value; saveDraft(); };
+      const s = slotEl(d.look, x.image, "foto"); s.style.width = "64px";
+      s.onclick = () => photoPicker(d.look, "Foto de referência", p => { x.image = p; rerender(); });
+      box.append(h("div", { class: "row", style: "align-items:flex-start;flex-wrap:nowrap" }, s, h("div", { class: "grow stack" }, lab,
+        h("button", { class: "btn small ghost", onclick: () => { d.details.splice(i, 1); rerender(); } }, "Remover"))));
+    });
+    if (d.details.length < 4) box.append(h("button", { class: "btn small", onclick: () => photoPicker(d.look, "Foto de referência", p => { d.details.push({ image: p, label: "" }); rerender(); }) }, "+ Referência"));
+    v.append(box);
+  }
+
+  // Takes
+  let refreshGen = () => {};
+  v.append(h("div", { class: "row between", style: "margin:18px 0 8px" }, h("h3", {}, "Takes"),
+    h("span", { class: "small muted" }, `${d.takes.reduce((a, t) => a + +t.duration, 0)} s no total, antes do corte`)));
+  d.takes.forEach((t, i) => {
+    const prompt = h("textarea", { placeholder: "Ex.: She walks slowly toward the camera, the ruffles bouncing with each step, then lifts her gaze into the lens. The camera glides backward at her pace." });
+    prompt.value = t.prompt; prompt.oninput = () => { t.prompt = prompt.value; saveDraft(); warnBox(); refreshGen(); };
+    const startSlot = slotEl(d.look, t.start, "Foto inicial"); startSlot.onclick = () => photoPicker(d.look, `Take ${i + 1}: início`, p => { t.start = p; rerender(); });
+    const endSlot = slotEl(d.look, t.end, "Fim (opcional)"); endSlot.onclick = () => photoPicker(d.look, `Take ${i + 1}: fim`, p => { t.end = p; rerender(); }, "Sem foto final (criação livre)");
+    const warns = h("div", { class: "stack" });
+    const warnBox = () => warns.replaceChildren(...takeWarnings(t, i, d.takes.length).map(([k, m]) => h("div", { class: "note " + (k === "err" ? "err" : k === "info" ? "info" : "") }, m)));
+    warnBox();
+    v.append(h("div", { class: "card stack" },
+      h("div", { class: "take-head" }, h("span", { class: "num" }, `Take ${i + 1}`), h("div", { class: "row" },
+        i > 0 ? h("button", { class: "btn small ghost", onclick: () => { d.takes.splice(i - 1, 0, d.takes.splice(i, 1)[0]); rerender(); } }, "↑") : null,
+        i < d.takes.length - 1 ? h("button", { class: "btn small ghost", onclick: () => { d.takes.splice(i + 1, 0, d.takes.splice(i, 1)[0]); rerender(); } }, "↓") : null,
+        d.takes.length > 1 ? h("button", { class: "btn small ghost", onclick: () => { d.takes.splice(i, 1); rerender(); } }, "Remover") : null)),
+      h("div", { class: "row", style: "flex-wrap:nowrap" }, startSlot, h("span", { class: "muted" }, "→"), endSlot,
+        h("div", { class: "grow small muted" }, t.end ? "Vai do início até a foto final." : "Criação livre: parte da foto inicial e o modelo inventa o resto. Melhor para caminhada e tecido em movimento.")),
+      h("div", {}, h("label", { class: "field" }, "Duração"), seg([["4", "4 s"], ["5", "5 s"], ["6", "6 s"], ["8", "8 s"], ["10", "10 s"]], String(t.duration), x => { t.duration = +x; rerender(); })),
+      h("div", {}, h("label", { class: "field" }, "Movimento e câmera"), prompt),
+      h("div", {}, h("label", { class: "field" }, "Qualidade deste take"), seg([["", "Igual ao vídeo"], ["final_rapido", "Rápido"], ["final", "Máxima"]], t.quality, x => { t.quality = x; saveDraft(); })),
+      warns));
+  });
+  v.append(h("button", { class: "btn block", onclick: () => { d.takes.push(newTake()); rerender(); } }, "+ Take"));
+
+  const countErrors = () => d.takes.flatMap((t, i) => takeWarnings(t, i, d.takes.length).filter(w => w[0] === "err")).length;
+  const gen = h("button", { class: "btn primary block", style: "margin-top:16px" }, "Gerar no pod");
+  const genHint = h("p", { class: "small muted", style: "text-align:center" }, "Complete os takes marcados em vermelho para gerar.");
+  const jsonPre = h("pre", { class: "json" });
+  refreshGen = () => { const n = countErrors(); gen.disabled = n > 0; genHint.classList.toggle("hidden", n === 0); jsonPre.textContent = JSON.stringify(buildJob(d), null, 2); };
+  gen.onclick = async () => {
+    gen.disabled = true; gen.textContent = "Enviando...";
+    try {
+      const fresh = buildJob(d);
+      const path = `jobs/fashion/${fresh.id}.json`;
+      await commitFiles([{ path, text: JSON.stringify(fresh, null, 2) + "\n" }], `App: job ${fresh.id}`);
+      await dispatch(WF_FASHION, { pipeline: "fashion_video", quality: fresh.quality, stage: "video", aspect_ratio: "padrao", job_file: path });
+      LS.set("lastJob", path); toast("Enviado! Acompanhe em Execuções."); setTimeout(() => go("execucoes"), 900);
+    } catch(e){ gen.disabled = false; gen.textContent = "Gerar no pod"; toast("Erro: " + e.message, 6000); }
+  };
+  v.append(gen, genHint);
+  v.append(h("details", { style: "margin-top:16px" }, h("summary", {}, "Ver o arquivo que será enviado"), jsonPre));
+  refreshGen();
+}
+function confirmLite(msg){ return window.confirm(msg); }
+
+/* ============ EXECUÇÕES ============ */
+const STATUS = { queued: ["Na fila", "warn"], waiting: ["Na fila", "warn"], pending: ["Na fila", "warn"], requested: ["Na fila", "warn"],
+  in_progress: ["Rodando", "run"], success: ["Pronto", "ok"], failure: ["Falhou", "bad"], cancelled: ["Cancelado", "bad"], timed_out: ["Tempo esgotado", "bad"] };
+async function viewRuns(v){
+  v.append(h("div", { class: "row between", style: "margin-bottom:12px" }, h("h2", {}, "Execuções"),
+    h("button", { class: "btn small", onclick: () => go("execucoes") }, "Atualizar")));
+  const box = h("div", { class: "card" }, h("div", { class: "empty" }, "Carregando..."));
+  v.append(box);
+  const load = async () => {
+    const [a, b] = await Promise.all([gh(`actions/workflows/${WF_FASHION}/runs?per_page=15`), gh(`actions/workflows/${WF_EDIT}/runs?per_page=10`).catch(() => ({ workflow_runs: [] }))]);
+    const runs = [...a.workflow_runs.map(r => ({ ...r, kind: "fashion" })), ...b.workflow_runs.map(r => ({ ...r, kind: "edicao" }))]
+      .sort((x, y) => new Date(y.created_at) - new Date(x.created_at)).slice(0, 20);
+    box.replaceChildren();
+    if (!runs.length) box.append(h("div", { class: "empty" }, "Nenhuma execução ainda."));
+    let active = false;
+    for (const r of runs){
+      const st = r.status === "completed" ? r.conclusion : r.status;
+      const [label, cls] = STATUS[st] || [st, ""];
+      if (r.status !== "completed") active = true;
+      const title = (r.display_title || "").replace(/^Moda jobs\/fashion\//, "").replace(/^Edicao edits\//, "").replace(/\.json$/, "");
+      const dur = r.status === "completed" ? fmtDur((new Date(r.updated_at) - new Date(r.run_started_at || r.created_at)) / 1000)
+        : r.status === "in_progress" ? "há " + fmtDur((Date.now() - new Date(r.run_started_at || r.created_at)) / 1000) : "";
+      box.append(h("div", { class: "list-item" },
+        h("div", { class: "grow" },
+          h("div", { class: "ellipsis", style: "font-weight:600" }, (r.kind === "edicao" ? "✂ " : "") + (title || r.name)),
+          h("div", { class: "small muted" }, `#${r.run_number} · ${ago(r.created_at)}${dur ? " · " + dur : ""}`)),
+        h("div", { class: "row", style: "justify-content:flex-end" },
+          h("span", { class: "pill " + cls }, label),
+          r.status === "completed" ? h("button", { class: "btn small", onclick: () => showResults(r) }, "Abrir")
+            : h("button", { class: "btn small ghost", onclick: async () => { if (confirmLite("Cancelar esta execução? O pod é desligado.")) { await gh(`actions/runs/${r.id}/cancel`, { method: "POST" }).catch(e => toast(e.message)); setTimeout(load, 1500); } } }, "Cancelar"))));
+    }
+    box.append(h("p", { class: "small muted", style: "margin:10px 0 0" }, active ? "Atualiza sozinho a cada 30 s. Um vídeo rápido de 3 takes leva ~30 a 45 min (inclui ligar o pod)." : "Toque em Abrir para ver os vídeos de uma execução pronta."));
+    clearInterval(state.runsTimer);
+    if (active) state.runsTimer = setInterval(() => { if (state.tab === "execucoes" && !sheet.open) load().catch(() => {}); }, 30000);
+  };
+  await load();
+}
+function previewFor(paths, src){
+  const stem = src.replace(/\.mp4$/, "");
+  return paths.find(p => p === stem + "-textura-extrema.mp4") || paths.find(p => p.startsWith(stem + "-textura-")) || src;
+}
+async function showResults(run){
+  const branch = `resultados/${run.kind === "edicao" ? "edicao" : "fashion"}-${run.run_number}`;
+  const body = h("div", { class: "stack" }, h("div", { class: "empty" }, "Carregando..."));
+  openSheet(`Execução #${run.run_number}`, body);
+  let tree;
+  try { tree = await gh(`git/trees/${encodeURIComponent(branch)}?recursive=1`); }
+  catch(e){
+    body.replaceChildren(h("div", { class: "note err" }, "Esta execução não publicou resultados (falhou antes de terminar)."),
+      h("a", { class: "btn small", href: run.html_url, target: "_blank", rel: "noopener" }, "Ver no GitHub")); return;
+  }
+  const files = tree.tree.filter(t => t.type === "blob");
+  const bySha = Object.fromEntries(files.map(f => [f.path, f]));
+  const mp4 = files.map(f => f.path).filter(p => p.endsWith(".mp4"));
+  body.replaceChildren();
+  if (run.conclusion !== "success") body.append(h("div", { class: "note err" }, "A execução terminou com erro. O que foi gerado antes do erro aparece abaixo."));
+  const log = files.find(f => /artifacts\/logs\/(gerar|montar)\.log$/.test(f.path));
+
+  const videoCard = (title, src, preview, extra) => {
+    const holder = h("div");
+    const play = h("button", { class: "btn small" }, "▶ Assistir");
+    play.onclick = async () => {
+      play.disabled = true; play.textContent = "Baixando...";
+      try {
+        const url = await blobBySha(bySha[preview].sha, "video/mp4");
+        holder.replaceChildren(h("video", { src: url, controls: true, playsinline: true, loop: true, autoplay: true, muted: true }));
+        play.replaceWith(h("a", { class: "btn small", href: url, download: baseName(preview) }, "Baixar"));
+      } catch(e){ play.disabled = false; play.textContent = "▶ Assistir"; toast(e.message); }
+    };
+    return h("div", { class: "card stack" }, h("div", { class: "row between" }, h("div", { style: "font-weight:600" }, title),
+      h("span", { class: "small muted" }, `${(bySha[preview].size / 1e6).toFixed(1)} MB`)), holder, h("div", { class: "row" }, play, extra || null));
+  };
+
+  if (run.kind === "edicao"){
+    for (const p of mp4) body.append(videoCard(baseName(p).replace(/\.mp4$/, ""), p, p));
+  } else {
+    const jobIds = [...new Set(mp4.map(p => p.split("/")[2]).filter(Boolean))];
+    for (const id of jobIds){
+      const inJob = mp4.filter(p => p.split("/")[2] === id);
+      const takeDirs = [...new Set(inJob.map(p => p.split("/")[3]).filter(x => /-take\d+$/.test(x || "")))].sort();
+      const film = inJob.find(p => p.split("/").length === 4 && /-textura-|grao|grain/.test(p)) || inJob.find(p => p.split("/").length === 4 && p.endsWith(`${id}.mp4`));
+      if (film) body.append(videoCard("Filme montado (automático)", film, film));
+      for (const dir of takeDirs){
+        const inTake = inJob.filter(p => p.split("/")[3] === dir);
+        const src = inTake.find(p => p.endsWith("video-01-1080p-cortado.mp4")) || inTake.find(p => p.endsWith("video-01-1080p.mp4")) || inTake.find(p => p.endsWith("video-01.mp4"));
+        if (!src) continue;
+        const n = +dir.match(/take(\d+)$/)[1];
+        const preview = previewFor(inTake, src);
+        const extra = h("div", { class: "row" },
+          h("button", { class: "btn small", onclick: () => addClip({ label: `${id.slice(0, 28)} · take ${n}`, branch, path: src, preview, sha: bySha[preview].sha }) }, "+ Edição"),
+          h("button", { class: "btn small ghost", onclick: () => redoTake(id, n, branch) }, "Refazer em máxima"));
+        body.append(videoCard(`Take ${n}`, src, preview, extra));
+      }
+      if (!takeDirs.length){
+        const src = inJob.find(p => p.endsWith("video-01-1080p.mp4")) || inJob[0];
+        const preview = previewFor(inJob, src);
+        body.append(videoCard(id, src, preview, h("button", { class: "btn small", onclick: () => addClip({ label: id.slice(0, 32), branch, path: src, preview, sha: bySha[preview].sha }) }, "+ Edição")));
+      }
+    }
+  }
+  if (!mp4.length) body.append(h("div", { class: "empty" }, "Nenhum vídeo nesta execução."));
+  if (log){
+    const pre = h("pre", { class: "json" }, "...");
+    body.append(h("details", {}, h("summary", { ontoggle: null }, "Log da execução"), pre));
+    pre.parentElement.addEventListener("toggle", async () => {
+      if (pre.textContent !== "...") return;
+      const res = await gh(`git/blobs/${log.sha}`, { raw: true, accept: "application/vnd.github.raw" });
+      const t = await res.text(); pre.textContent = t.split("\n").slice(-60).join("\n");
+    });
+  }
+  body.append(h("a", { class: "btn small ghost", href: run.html_url, target: "_blank", rel: "noopener" }, "Ver no GitHub"));
+}
+async function redoTake(id, n, branch){
+  if (!confirmLite(`Refazer o take ${n} em qualidade máxima? Leva ~30 a 45 min de pod.`)) return;
+  try {
+    let job;
+    try { job = JSON.parse(await textByPath(`jobs/fashion/${id}.json`, cfg.branch)); }
+    catch(e){ job = JSON.parse(await textByPath(`jobs/fashion/${id}.json`, "fix-diagnosticos")); }
+    const shot = { ...(job.shots || [])[n - 1] }; delete shot.quality;
+    if (!shot.keyframes) throw new Error("Não achei o take no job original.");
+    const { shots, ...base } = job;
+    const fresh = { ...base, id: `${id}-take${String(n).padStart(2, "0")}-max-${stamp()}`, quality: "final", shots: [shot] };
+    const path = `jobs/fashion/${fresh.id}.json`;
+    await commitFiles([{ path, text: JSON.stringify(fresh, null, 2) + "\n" }], `App: refazer take ${n} de ${id} em máxima`);
+    await dispatch(WF_FASHION, { pipeline: "fashion_video", quality: "final", stage: "video", aspect_ratio: "padrao", job_file: path });
+    toast("Refazendo em máxima. Acompanhe em Execuções."); closeSheet(); go("execucoes");
+  } catch(e){ toast("Erro: " + e.message, 6000); }
+}
+
+/* ============ EDIÇÃO ============ */
+function addClip(c){
+  state.edit.clips.push({ ...c, start: 0, end: null });
+  saveEdit(); toast(`Adicionado à edição (${state.edit.clips.length} trechos)`);
+}
+async function viewEdicao(v){
+  const e = state.edit, rerender = () => { saveEdit(); go("edicao"); };
+  v.append(h("div", { class: "row between", style: "margin-bottom:12px" }, h("h2", {}, "Edição"),
+    e.clips.length ? h("button", { class: "btn ghost small", onclick: () => { if (confirmLite("Limpar todos os trechos?")) { e.clips = []; rerender(); } } }, "Limpar") : null));
+  if (!e.clips.length){
+    v.append(h("div", { class: "card empty" }, "Abra uma execução pronta e toque em “+ Edição” nos takes que você quer usar. Depois marque o início e o fim de cada trecho aqui."));
+    return;
+  }
+  const total = () => e.clips.reduce((a, c) => a + Math.max(0, (c.end ?? 0) - c.start), 0);
+  const totalEl = h("span", { class: "small muted" });
+  const updTotal = () => totalEl.textContent = `${total().toFixed(1)} s no total`;
+  const name = h("input", { type: "text", value: e.name, placeholder: "ex. vestido verde stories v2" }); name.oninput = () => { e.name = name.value; saveEdit(); };
+  v.append(h("div", { class: "card stack" }, h("div", {}, h("label", { class: "field" }, "Nome da edição"), name),
+    h("div", {}, h("label", { class: "field" }, "Textura no filme inteiro"), seg([["extrema", "Extrema"], ["forte", "Forte"], ["limpa", "Limpa"], ["nenhuma", "Nenhuma"]], e.texture, x => { e.texture = x; saveEdit(); })),
+    h("p", { class: "small muted", style: "margin:0" }, "Os cortes usam a versão sem textura de cada take; a textura é aplicada uma vez no final, igual às edições que aprovamos.")));
+
+  e.clips.forEach((c, i) => {
+    const vid = h("video", { playsinline: true, controls: true, muted: true, preload: "metadata" });
+    const holder = h("div", {}, h("button", { class: "btn small", onclick: async ev => {
+      ev.target.disabled = true; ev.target.textContent = "Baixando...";
+      try { vid.src = await blobBySha(c.sha, "video/mp4"); holder.replaceChildren(vid); } catch(err){ toast(err.message); }
+    } }, "▶ Carregar vídeo"));
+    const st = h("input", { type: "number", step: "0.05", min: "0", value: c.start });
+    const en = h("input", { type: "number", step: "0.05", min: "0", value: c.end ?? "", placeholder: "fim" });
+    vid.addEventListener("loadedmetadata", () => { if (c.end == null){ c.end = +vid.duration.toFixed(2); en.value = c.end; saveEdit(); updTotal(); } c.dur = vid.duration; });
+    st.oninput = () => { c.start = +st.value || 0; saveEdit(); updTotal(); };
+    en.oninput = () => { c.end = en.value === "" ? null : +en.value; saveEdit(); updTotal(); };
+    const mark = (which) => { if (!vid.src) return toast("Carregue o vídeo primeiro"); const t = +vid.currentTime.toFixed(2); if (which === "s"){ c.start = t; st.value = t; } else { c.end = t; en.value = t; } saveEdit(); updTotal(); };
+    const testBtn = h("button", { class: "btn small ghost", onclick: () => { if (!vid.src) return toast("Carregue o vídeo primeiro"); vid.currentTime = c.start; vid.play(); const stop = () => { if (vid.currentTime >= (c.end ?? 1e9)) { vid.pause(); vid.removeEventListener("timeupdate", stop); } }; vid.addEventListener("timeupdate", stop); } }, "▶ Trecho");
+    v.append(h("div", { class: "card stack" },
+      h("div", { class: "take-head" }, h("div", { class: "grow" }, h("span", { class: "num" }, `${i + 1}`), " ", h("span", { class: "small muted" }, c.label)),
+        h("div", { class: "row" },
+          i > 0 ? h("button", { class: "btn small ghost", onclick: () => { e.clips.splice(i - 1, 0, e.clips.splice(i, 1)[0]); rerender(); } }, "↑") : null,
+          i < e.clips.length - 1 ? h("button", { class: "btn small ghost", onclick: () => { e.clips.splice(i + 1, 0, e.clips.splice(i, 1)[0]); rerender(); } }, "↓") : null,
+          h("button", { class: "btn small ghost", onclick: () => { e.clips.splice(i, 1); rerender(); } }, "×"))),
+      holder,
+      h("div", { class: "row", style: "flex-wrap:nowrap" },
+        h("div", { class: "grow" }, h("label", { class: "field" }, "Início (s)"), st),
+        h("div", { class: "grow" }, h("label", { class: "field" }, "Fim (s)"), en)),
+      h("div", { class: "row" }, h("button", { class: "btn small", onclick: () => mark("s") }, "Marcar início aqui"),
+        h("button", { class: "btn small", onclick: () => mark("e") }, "Marcar fim aqui"), testBtn),
+      h("button", { class: "btn small ghost", onclick: () => { e.clips.splice(i + 1, 0, { ...c, start: c.end ?? c.start, end: null }); rerender(); } }, "Duplicar (usar outro trecho do mesmo take)")));
+  });
+  updTotal();
+  const ready = () => e.clips.every(c => c.end != null && c.end > c.start);
+  const preview = h("button", { class: "btn block" }, "Prévia da sequência");
+  preview.onclick = () => playSequence(e.clips);
+  const mount = h("button", { class: "btn primary block", style: "margin-top:10px" }, "Montar edição final");
+  mount.onclick = async () => {
+    if (!ready()) return toast("Defina início e fim de todos os trechos (carregue o vídeo para preencher o fim).", 4000);
+    mount.disabled = true; mount.textContent = "Enviando...";
+    try {
+      const id = `${slug(e.name) || "edicao"}-${stamp()}`;
+      const spec = { id, texture: e.texture, width: 1080, height: 1890,
+        segments: e.clips.map(c => ({ branch: c.branch, path: c.path, start: +c.start, end: +c.end, label: c.label })) };
+      const path = `edits/${id}.json`;
+      await commitFiles([{ path, text: JSON.stringify(spec, null, 2) + "\n" }], `App: edição ${id}`);
+      await dispatch(WF_EDIT, { edit_file: path });
+      toast("Montando (2 a 4 min, sem GPU). Veja em Execuções."); setTimeout(() => go("execucoes"), 900);
+    } catch(err){ mount.disabled = false; mount.textContent = "Montar edição final"; toast("Erro: " + err.message, 6000); }
+  };
+  v.append(h("div", { class: "row between", style: "margin:6px 0 10px" }, h("span", {}), totalEl), preview, mount);
+}
+async function playSequence(clips){
+  const vid = h("video", { playsinline: true, muted: true, controls: false });
+  const info = h("div", { class: "small muted" }, "Baixando trechos...");
+  openSheet("Prévia", h("div", { class: "stack" }, vid, info));
+  try {
+    const urls = [];
+    for (const c of clips) urls.push(await blobBySha(c.sha, "video/mp4"));
+    let i = 0;
+    const playAt = () => {
+      if (!sheet.open) return;
+      if (i >= clips.length){ info.textContent = "Fim da prévia. Toque para repetir."; vid.onclick = () => { i = 0; playAt(); }; return; }
+      const c = clips[i]; info.textContent = `Trecho ${i + 1} de ${clips.length}`;
+      let done = false;
+      const next = () => { if (done) return; done = true; vid.ontimeupdate = vid.onended = null; i++; playAt(); };
+      vid.src = urls[i];
+      vid.onloadedmetadata = () => { vid.currentTime = c.start; vid.play(); };
+      vid.ontimeupdate = () => { if (vid.currentTime >= (c.end ?? vid.duration) - 0.03) next(); };
+      vid.onended = next;
+    };
+    playAt();
+  } catch(e){ info.textContent = "Erro: " + e.message; }
+}
+
+/* ============ início ============ */
+go(state.tab);
+</script>
+</body>
+</html>
